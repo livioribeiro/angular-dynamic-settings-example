@@ -1,27 +1,88 @@
-# MyApp
+# Angular Dynamic Settings Example
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 12.2.2.
+This is an example project show how to use dynamic settings in an Angular project.
 
-## Development server
+Instead of having `environment.staging.ts` and `environment.prod.ts` and rebuilding for every environment, you can just inject the a javascript file that will set `window.$environment` at page load, and then export that object at `environment.ts`:
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
+```typescript
+export const environment = (window as any).$environment;
+```
 
-## Code scaffolding
+This is done by first creating the directory `src/config` and adding the javascript file `environment.js` that will set the `window.$environment` object:
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+```javascript
+window.$environment = {
+    production: false,
+};
+```
 
-## Build
+Changing `angular.json` to copy the `src/config` directory to the output directory and removing the file replacement directive:
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+```json
+...
+"build": {
+  "builder": "@angular-devkit/build-angular:browser",
+  "options": {
+    // "outputPath" is just "dist"
+    "outputPath": "dist",
+    "index": "src/index.html",
+    "main": "src/main.ts",
+    "polyfills": "src/polyfills.ts",
+    "tsConfig": "tsconfig.app.json",
+    "assets": [
+      "src/favicon.ico",
+      "src/assets",
+      // add the following
+      "src/config"
+    ],
+    "styles": [
+      "src/styles.css"
+    ],
+    "scripts": []
+  },
+    "configurations": {
+      "production": {
+        "budgets": [
+          {
+            "type": "initial",
+            "maximumWarning": "500kb",
+            "maximumError": "1mb"
+          },
+          {
+            "type": "anyComponentStyle",
+            "maximumWarning": "2kb",
+            "maximumError": "4kb"
+          }
+        ],
+        // "fileReplacements" is removed
+        "outputHashing": "all"
+      },
+...
+```
 
-## Running unit tests
+Removing `src/environemnts/environment.prod.ts`:
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+```sh
+rm src/environemnts/environment.prod.ts
+```
 
-## Running end-to-end tests
+And loading `environment.js` in `index.html`:
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MyApp</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script src="config/environment.js"></script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>
+```
 
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+Now you can just mount another `environment.js` into `${app root}/config/environment.js` using `docker run -v ...` or, with kubernetes, mount a configmap into `${app root}/config`.
